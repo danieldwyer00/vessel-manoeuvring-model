@@ -2,7 +2,7 @@ import numpy as np
 from haversine import haversine, Unit
 
 class vessel_class:
-    def __init__(self, ax, Name, Throttle, Rudder_Angle, Position, Velocity, Acceleration, Density, Length, Beam, Draft, CB, LCG, kz, Frames):
+    def __init__(self, ax, Name, Throttle, Rudder_Angle, Position, Velocity, Acceleration, Density, Length, Beam, Draft, CB, LCG, kz, XuPrimeFwd, XuPrimeReverse):
         self.Name = Name
         
         
@@ -20,19 +20,25 @@ class vessel_class:
         self.Iz = self.mass*self.kz**2
 
         self.YvPrime, self.YrPrime, self.NvPrime, self.NrPrime = ClarkeDerivatives(self.Length,self.Beam,self.Draft,self.CB)
-        self.XuPrimeFwd = -0.003
-        self.XuPrimeReverse = -0.01
-
-        self.PosLog = np.zeros([3,Frames])
-        self.BowPos = np.zeros([2,Frames])
-        self.SternPos = np.zeros([2,Frames])
+        self.XuPrimeFwd = XuPrimeFwd
+        self.XuPrimeReverse = XuPrimeReverse
 
         self.Throttle = Throttle
         self.Rudder_Angle = Rudder_Angle
 
+        self.stallAngle = np.deg2rad(45)
+        self.CL = 0.8
+        self.AR = 2
+
         if ax is not None:
             self.line, = ax.plot([], [], 'b--', label='Vessel Path')
-            self.point, = ax.plot([], [], 'r',linewidth=Beam)  # current position
+            self.outline, = ax.plot([], [], 'r',linewidth=Beam)  # current position
+    
+    def Update(self, dt, Density):
+        self.Position,self.Velocity,self.Acceleration,self.GlobalVelocity,self.GlobalAcceleration = Model(self.Position,self.Velocity,self.Acceleration,dt,Density,self.Length,self.lcg,self.mass,self.Iz,self.YvPrime, self.YrPrime, self.NvPrime, self.NrPrime, self.XuPrimeFwd, self.XuPrimeReverse, self.CL, self.AR, self.Rudder_Angle,self.stallAngle, self.Throttle)
+        
+        self.BowPos, self.SternPos = ShipPos(self.Position,self.Length,self.lcg)
+        self.outline.set_data((self.Position[1],self.BowPos[1],self.SternPos[1]), (self.Position[0],self.BowPos[0],self.SternPos[0]))
 
 class line:
     def __init__(self, p1x, p1y, p2x, p2y):

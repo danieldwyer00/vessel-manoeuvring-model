@@ -16,7 +16,7 @@ os.makedirs(models_dir, exist_ok=True)
 os.makedirs(logdir, exist_ok=True)
 
 # Number of parallel envs
-n_envs = 16  # adjust to CPU cores
+n_envs = 16 # adjust to CPU cores
 
 def make_env(rank: int, seed: int = 0):
     def _init():
@@ -60,9 +60,9 @@ if __name__ == "__main__":
         tensorboard_log=logdir,
     )
 
-    Timesteps = 4000
+    Timesteps = 6000
     try:
-        for i in range(1, 250):
+        for i in range(1, 500):
             model.learn(total_timesteps=Timesteps, reset_num_timesteps=False, tb_log_name="PPO")
             model.save(f"{models_dir}/{Timesteps * i}")
             # Save VecNormalize statistics for later evaluation/retraining

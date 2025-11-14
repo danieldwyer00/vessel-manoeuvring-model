@@ -36,10 +36,10 @@ class VesselSim(QtWidgets.QMainWindow):
         Acceleration[1,0] = 0 #Initial Sway Acceleration m/s2
         Acceleration[2,0] = 0 #Initial Yaw Acceleration rad/s2
 
-        Length = 43
-        Beam = 10.5
-        Draft = 2.5
-        CB = 0.53
+        Length = 10
+        Beam = 3
+        Draft = 1
+        CB = 0.75
         lcg = 0
         kz = Length / 4
         XuPrimeFwd = -0.003
@@ -82,8 +82,8 @@ class VesselSim(QtWidgets.QMainWindow):
         layout.addWidget(self.canvas, 0, 1)
         self.ax = self.fig.add_subplot(111)
         self.ax.set_aspect("equal")
-        self.ax.set_xlim(-100, 100)
-        self.ax.set_ylim(-100, 100)
+        self.ax.set_xlim(-50, 50)
+        self.ax.set_ylim(-50, 50)
         self.ax.grid(True)
 
         # Vessel geometry (simple rectangle + bow/stern markers)

@@ -4,9 +4,9 @@ from stable_baselines3 import PPO
 from .DynamicPositioningEnv import VesselEnv
 import os
 
-models_dir = "DynamicPositioning/dynamicPositioningModels/PPO-1762749474" 
-model_path = os.path.join(models_dir, "888000")  # path to the saved .zip
-vecnorm_path = os.path.join(models_dir, "vecnormalize_888000.pkl")
+models_dir = "DynamicPositioning/dynamicPositioningModels/PPO-1763011259" 
+model_path = os.path.join(models_dir, "latest_interrupt")  # path to the saved .zip
+vecnorm_path = os.path.join(models_dir, "vecnormalize_latest.pkl")
 
 def make_env():
     return Monitor(VesselEnv(render_mode="human"))

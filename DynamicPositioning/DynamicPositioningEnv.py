@@ -22,11 +22,10 @@ class VesselEnv(gym.Env):
         super().__init__()
         self.render_mode = render_mode
          #Variables *********************************************************************************************************************************************************************
-        self.dt = 1/20
-        self.Frames = 4000
+        self.dt = 1/30
+        self.Frames = 6000
         self.i = 0
 
-        self.MaxRudder = np.deg2rad(30)
         self.MaxDistance = 100
         self.MaxSpeed = 5
         self.MaxYawRate = np.deg2rad(30)
@@ -43,20 +42,7 @@ class VesselEnv(gym.Env):
         Velocity[1,0] = 0 #Initial Sway Velocity m/s
         Velocity[2,0] = 0 #Initial Yaw Velocity rad/s
 
-        Acceleration[0,0] = 0 #Initial Surge Acceleration m/s2
-        Acceleration[1,0] = 0 #Initial Sway Acceleration m/s2
-        Acceleration[2,0] = 0 #Initial Yaw Acceleration rad/s2
-
         self.Density = 1025  #kg/m3
-
-        Length = 10 #m
-        Beam = 3 #m
-        Draft = 1.5 #m
-        CB = 0.6
-
-        lcg = 0 #m Fwd of MS
-        kz = Length/4 #m
-
 
         if self.render_mode == "human":
             # Set up plot
@@ -78,25 +64,24 @@ class VesselEnv(gym.Env):
         else:
            self.ax = None
 
-        self.vessel = vessel_class(self.ax,"Vessel1",0,0,Position,Velocity,Acceleration,self.Density,Length,Beam,Draft,CB,lcg,kz,self.Frames)
+        self.vessel = vessel_from_file("VesselData/WAM-V",Position, Velocity)
 
         # Define action and observation space
-        self.action_space = spaces.Box(low=-1, high=1, shape=(2,))
+        self.action_space = spaces.Box(low=-1, high=1, shape=(4,))
         self.observation_space = spaces.Box(low=-1000, high=1000, shape=(10,), dtype=np.float32)
 
     
 
     def step(self, action):
-        self.Previous_Rudder_Angle = self.vessel.Rudder_Angle
-        self.Previous_Throttle = self.vessel.Throttle
+        self.vessel.PortThrottleCommand = float(np.clip(action[0], -1.0, 1.0))
+        self.vessel.StbdThrottleCommand = float(np.clip(action[1], -1.0, 1.0))
 
-        self.vessel.Throttle = float(np.clip(action[0], -1.0, 1.0))
-        self.vessel.Rudder_Angle = float(np.clip(action[1], -1.0, 1.0)) * self.MaxRudder
+        self.vessel.PortRudderCommand = float(np.clip(action[2], -1.0, 1.0))
+        self.vessel.StbdRudderCommand = float(np.clip(action[3], -1.0, 1.0))
 
-        self.Delta_Rudder_Angle = self.vessel.Rudder_Angle - self.Previous_Rudder_Angle
-        self.Delta_Throttle = self.vessel.Throttle - self.Previous_Throttle
-
-        self.vessel.Position,self.vessel.Velocity,self.vessel.Acceleration,self.vessel.GlobalVelocity,self.vessel.GlobalAcceleration = Model(self.vessel.Position,self.vessel.Velocity,self.vessel.Acceleration,self.dt,self.Density,self.vessel.Length,self.vessel.lcg,self.vessel.mass,self.vessel.Iz,self.vessel.YvPrime, self.vessel.YrPrime, self.vessel.NvPrime, self.vessel.NrPrime, self.vessel.XuPrimeFwd, self.vessel.XuPrimeReverse, 0.8, 4, self.vessel.Rudder_Angle,np.pi/2, self.vessel.Throttle)  
+        ThrottleCommands = [self.vessel.PortThrottleCommand, self.vessel.StbdThrottleCommand]
+        RudderCommands = [self.vessel.PortRudderCommand, self.vessel.StbdRudderCommand]
+        self.vessel.Update(ThrottleCommands, RudderCommands, self.dt, self.Density)
 
         #waypoint with desired heading
 
@@ -133,21 +118,19 @@ class VesselEnv(gym.Env):
         #velocity reward at far distance
         velocityReward = 0.1 * self.VelocityToWaypoint * (1 - (0.4 * np.e ** (-0.002 * self.DistanceToWaypoint ** 2) + (0.6 * np.e ** (-0.000002 * self.DistanceToWaypoint ** 6))))
         #heading Reward
-        headingReward = (np.e ** (-10 * self.DesiredHeadingError ** 2)) * (np.e**(-0.5 * self.DistanceToWaypoint ** 2))
+        headingReward = (0.4 * np.e ** (-0.3 * self.DesiredHeadingError ** 2) + 0.6 * np.e ** (-10 * abs(self.DesiredHeadingError))) * (np.e**(-0.03 * self.DistanceToWaypoint ** 2))
         #overspeed penalty
-        overspeed_penalty = (max(0, abs(self.vessel.Velocity[0]) - self.MaxSpeed) / self.MaxSpeed)
+        overspeed_penalty = (max(0, (self.vessel.Velocity[0] **2 + self.vessel.Velocity[1] **2) ** 0.5 - self.MaxSpeed) / self.MaxSpeed)
 
-        rudder_change_penalty = self.Delta_Rudder_Angle / (2 * self.MaxRudder * self.dt)
-        throttle_change_penalty = self.Delta_Throttle / (2 * self.dt)
+        #rudder_change_penalty = self.Delta_Rudder_Angle / (2 * self.MaxRudder * self.dt)
+        #throttle_change_penalty = self.Delta_Throttle / (2 * self.dt)
 
         #add rewards
         reward = float(
             0.6 * distanceReward +
             0.2 * velocityReward +
-            0.6 * headingReward -
-            1 * overspeed_penalty - 
-            3 * rudder_change_penalty -
-            3 * throttle_change_penalty
+            2.0 * headingReward -
+            1 * overspeed_penalty
         )
 
         if(self.DistanceToWaypoint > self.MaxDistance):
@@ -162,22 +145,20 @@ class VesselEnv(gym.Env):
             self.truncated = True
             return observation, reward, self.terminated, self.truncated, {}
         
-        self.vessel.BowPos[:,self.i:self.i+1], self.vessel.SternPos[:,self.i:self.i+1] = ShipPos(self.vessel.Position,self.vessel.Length,self.vessel.lcg)
-        self.vessel.PosLog[:,self.i] = self.vessel.Position[:,0]   
 
         if self.render_mode == "human":
-            self.vessel.line.set_data(self.vessel.Position[1,:self.i], self.vessel.Position[0,:self.i])     # update path
-            self.vessel.point.set_data((self.vessel.PosLog[1,self.i],self.vessel.BowPos[1,self.i],self.vessel.SternPos[1,self.i]), (self.vessel.PosLog[0,self.i],self.vessel.BowPos[0,self.i],self.vessel.SternPos[0,self.i]))  # update current point
-            self.vessel.point.set_linewidth(10)
+            self.point.set_data((self.vessel.Position[1,0],self.vessel.BowPos[1,0],self.vessel.SternPos[1,0]), (self.vessel.Position[0,0],self.vessel.BowPos[0,0],self.vessel.SternPos[0,0]))  # update current point
+            self.point.set_linewidth(10)
 
             plotwaypointx = [self.MyWaypoint.Position[0]]
             plotwaypointy = [self.MyWaypoint.Position[1]]
-            self.MyWaypoint.point.set_data((plotwaypointx,plotwaypointx + self.vessel.Length/2 * np.sin(self.MyWaypoint.DesiredHeading), plotwaypointx - self.vessel.Length/2 * np.sin(self.MyWaypoint.DesiredHeading)), (plotwaypointy, plotwaypointy + self.vessel.Length/2 * np.cos(self.MyWaypoint.DesiredHeading), plotwaypointy - self.vessel.Length/2 * np.cos(self.MyWaypoint.DesiredHeading)))
+            self.MyWaypoint.point.set_data((plotwaypointx,plotwaypointx + self.vessel.vessel_data.geometry.LOA/2 * np.sin(self.MyWaypoint.DesiredHeading), plotwaypointx - self.vessel.vessel_data.geometry.LOA/2 * np.sin(self.MyWaypoint.DesiredHeading)), (plotwaypointy, plotwaypointy + self.vessel.vessel_data.geometry.LOA/2 * np.cos(self.MyWaypoint.DesiredHeading), plotwaypointy - self.vessel.vessel_data.geometry.LOA/2 * np.cos(self.MyWaypoint.DesiredHeading)))
           
             #print("Heading Error: " + str(self.HeadingToWaypointError) + "Distance : " + str(self.DistanceToWaypoint))
-            print("Throttle: " + str(self.vessel.Throttle) + " Rudder angle: " + str(np.rad2deg(self.vessel.Rudder_Angle)) + " Speed: " + str(self.vessel.Velocity[0]) + " Heading Error (degrees): " + str(np.rad2deg(self.DesiredHeadingError)) + " Distance (m): " + str(self.DistanceToWaypoint))
+            #print("Heading Error (degrees): " + str(np.rad2deg(self.DesiredHeadingError)) + " Distance (m): " + str(self.DistanceToWaypoint))
             #print("Heading Reward: " + str(headingReward) + " Desired Heading: " + str(np.rad2deg(self.MyWaypoint.DesiredHeading)) + " Heading Error: " + str(np.rad2deg(self.DesiredHeadingError)))
             #print("Heading Reward: " + str(headingReward) + " Distance Reward: " + str(distanceReward) + " Velocity Reward" + str(velocityReward))
+            print("Port Throttle: " + str(self.vessel.PortThrottleCommand) + " Stbd Throttle: " + str(self.vessel.PortThrottleCommand) + " Port Rudder Command: " + str(self.vessel.PortRudderCommand) + " Stbd Rudder Command: " + str(self.vessel.StbdRudderCommand) + " Speed: " + str(self.vessel.Velocity[0]))
             plt.pause(self.dt)
 
         info = {}
@@ -200,9 +181,9 @@ class VesselEnv(gym.Env):
         self.vessel.Velocity[1,0] = 0 #Initial Sway Velocity m/s
         self.vessel.Velocity[2,0] = 0 #Initial Yaw Velocity rad/s
 
-        self.vessel.Acceleration[0,0] = 0 #Initial Surge Acceleration m/s2
-        self.vessel.Acceleration[1,0] = 0 #Initial Sway Acceleration m/s2
-        self.vessel.Acceleration[2,0] = 0 #Initial Yaw Acceleration rad/s2
+        self.vessel.Acceleration[0] = 0 #Initial Surge Acceleration m/s2
+        self.vessel.Acceleration[1] = 0 #Initial Sway Acceleration m/s2
+        self.vessel.Acceleration[2] = 0 #Initial Yaw Acceleration rad/s2
 
         self.MaxSpeed = np.random.uniform(1,6)
         self.MaxYawRate = 0.1

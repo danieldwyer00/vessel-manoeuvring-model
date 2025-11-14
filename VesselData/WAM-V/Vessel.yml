@@ -1,0 +1,16 @@
+vessel:
+  name: AMC WAM-V
+  geometry:
+    LOA: 10 #m
+    LWL: 5 #m
+    B: 2.5 #m
+    T: 0.5 #m
+
+  mass:
+    displacement: 385 #kg
+    CG: [0,0,0] # MS
+    kz: 1.25 #m
+  files:
+    hydrostatics: /hydrostatics.yml
+    hydrodynamics: /hydrodynamics.yml
+    propulsion: /propulsion.yml

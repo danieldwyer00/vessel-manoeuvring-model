@@ -1,0 +1,13 @@
+hydrodynamics:
+  linear_damping:
+    Yv: -80
+    Yr: 0
+    Nv: 0
+    Nr: -400
+    Xu: -51.3
+  added_mass:
+    Yvdot: 0
+    Yrdot: 0
+    Nvdot: 0
+    Nrdot: 0
+    Xudot: 0

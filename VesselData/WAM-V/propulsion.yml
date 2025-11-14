@@ -1,0 +1,29 @@
+propulsion:
+  propellers:
+    - id: 0
+      name: port
+      D: 0.3
+      position: [-2.5, -1.25, -0.1]
+      rotation: left
+      max_rpm: 1000
+      wake_fraction: 0.1
+      thrust_deduction: 0.1
+      kt_table: { J: [0.0,0.2,0.4,0.6], Kt: [0.25,0.22,0.18,0.12],  }
+      kq_table: { J: [0.0,0.2,0.4,0.6], Kq: [0.035,0.032,0.028,0.020] }
+      pivoting: True
+      max_angle: 15 #degrees
+
+    - id: 1
+      name: stbd
+      D: 0.3
+      position: [-2.5, 1.25, -0.1]
+      rotation: right
+      max_rpm: 1000
+      wake_fraction: 0.1
+      thrust_deduction: 0.1
+      kt_table: { J: [0.0,0.2,0.4,0.6], Kt: [0.25,0.22,0.18,0.12],  }
+      kq_table: { J: [0.0,0.2,0.4,0.6], Kq: [0.035,0.032,0.028,0.020] }
+      pivoting: True
+      max_angle: 15 #degrees
+
+    

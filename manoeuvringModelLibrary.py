@@ -653,3 +653,17 @@ def cross_track_and_heading_error(line, vessel, unwrap_state=None):
 
     return x_cross, y_along, hdg_err_wrapped, hdg_err_unwrapped, phi
 
+### observations
+def DPObservations(self):
+    observation = np.array([
+            float(np.clip(self.DistanceToWaypoint / float(self.MaxDistance), -1, 1)),
+            float(self.VelocityToWaypoint / float(self.MaxSpeed)),
+            float(np.sin(self.HeadingToWaypointError)),
+            float(np.cos(self.HeadingToWaypointError)),
+            float(np.sin(self.DesiredHeadingError)),
+            float(np.cos(self.DesiredHeadingError)),
+            self.vessel.Throttle,
+            self.vessel.Rudder_Angle
+        ], dtype=np.float32)
+    return observation
+

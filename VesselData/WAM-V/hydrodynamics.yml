@@ -1,6 +1,6 @@
 hydrodynamics:
   linear_damping:
-    Yv: -80
+    Yv: -40
     Yr: 0
     Nv: 0
     Nr: -400

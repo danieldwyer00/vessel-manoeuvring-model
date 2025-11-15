@@ -1,7 +1,7 @@
 vessel:
   name: AMC WAM-V
   geometry:
-    LOA: 10 #m
+    LOA: 5 #m
     LWL: 5 #m
     B: 2.5 #m
     T: 0.5 #m

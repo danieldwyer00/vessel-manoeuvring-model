@@ -27,8 +27,7 @@ class VesselEnv(gym.Env):
         self.i = 0
 
         self.MaxDistance = 100
-        self.MaxSpeed = 5
-        self.MaxYawRate = np.deg2rad(30)
+        self.MaxSpeed = 6
 
         Position = np.zeros([3,1])
         Velocity = np.zeros([3,1])
@@ -68,7 +67,7 @@ class VesselEnv(gym.Env):
 
         # Define action and observation space
         self.action_space = spaces.Box(low=-1, high=1, shape=(4,))
-        self.observation_space = spaces.Box(low=-1000, high=1000, shape=(10,), dtype=np.float32)
+        self.observation_space = spaces.Box(low=-1000, high=1000, shape=(8,), dtype=np.float32)
 
     
 
@@ -94,11 +93,6 @@ class VesselEnv(gym.Env):
         #desired heading error
         self.DesiredHeadingError = self.MyWaypoint.DesiredHeadingError(self.vessel)
 
-        vel = np.asarray(self.vessel.Velocity).flatten()  # ensures shape (3,)
-        vx = float(vel[0]) if len(vel) > 0 else 0.0
-        vy = float(vel[1]) if len(vel) > 1 else 0.0
-        r  = float(vel[2]) if len(vel) > 2 else 0.0
-
         observation = np.array([
             float(np.clip(self.DistanceToWaypoint / float(self.MaxDistance), -1, 1)),
             float(self.VelocityToWaypoint / float(self.MaxSpeed)),
@@ -106,8 +100,6 @@ class VesselEnv(gym.Env):
             float(np.cos(self.HeadingToWaypointError)),
             float(np.sin(self.DesiredHeadingError)),
             float(np.cos(self.DesiredHeadingError)),
-            r / float(self.MaxYawRate),
-            vy / float(self.MaxSpeed),
             self.vessel.Throttle,
             self.vessel.Rudder_Angle
         ], dtype=np.float32)
@@ -116,11 +108,9 @@ class VesselEnv(gym.Env):
         #distance reward
         distanceReward = 0.4*np.e**(-0.002 * self.DistanceToWaypoint ** 2) + 0.6*np.e**(-1 * self.DistanceToWaypoint ** 2)
         #velocity reward at far distance
-        velocityReward = 0.1 * self.VelocityToWaypoint * (1 - (0.4 * np.e ** (-0.002 * self.DistanceToWaypoint ** 2) + (0.6 * np.e ** (-0.000002 * self.DistanceToWaypoint ** 6))))
+        velocityReward = (self.VelocityToWaypoint / self.MaxSpeed) * (1 - (0.4 * np.e ** (-0.002 * self.DistanceToWaypoint ** 2) + (0.6 * np.e ** (-0.0000001 * self.DistanceToWaypoint ** 6))))
         #heading Reward
-        headingReward = (0.4 * np.e ** (-0.3 * self.DesiredHeadingError ** 2) + 0.6 * np.e ** (-10 * abs(self.DesiredHeadingError))) * (np.e**(-0.03 * self.DistanceToWaypoint ** 2))
-        #overspeed penalty
-        overspeed_penalty = (max(0, (self.vessel.Velocity[0] **2 + self.vessel.Velocity[1] **2) ** 0.5 - self.MaxSpeed) / self.MaxSpeed)
+        headingReward = (0.4 * np.e ** (-0.3 * self.DesiredHeadingError ** 2) + 0.6 * np.e ** (-10 * abs(self.DesiredHeadingError))) * (np.e**(-1 * self.DistanceToWaypoint ** 2))
 
         #rudder_change_penalty = self.Delta_Rudder_Angle / (2 * self.MaxRudder * self.dt)
         #throttle_change_penalty = self.Delta_Throttle / (2 * self.dt)
@@ -128,9 +118,8 @@ class VesselEnv(gym.Env):
         #add rewards
         reward = float(
             0.6 * distanceReward +
-            0.2 * velocityReward +
-            2.0 * headingReward -
-            1 * overspeed_penalty
+            0.3 * velocityReward +
+            1.2 * headingReward
         )
 
         if(self.DistanceToWaypoint > self.MaxDistance):
@@ -185,9 +174,6 @@ class VesselEnv(gym.Env):
         self.vessel.Acceleration[1] = 0 #Initial Sway Acceleration m/s2
         self.vessel.Acceleration[2] = 0 #Initial Yaw Acceleration rad/s2
 
-        self.MaxSpeed = np.random.uniform(1,6)
-        self.MaxYawRate = 0.1
-
         #generate random waypoint
         self.MyWaypoint = waypoint(self.ax,[np.random.uniform(-50,50),np.random.uniform(-50,50)],np.random.uniform(-np.pi,np.pi))
         #distance to wp
@@ -201,11 +187,6 @@ class VesselEnv(gym.Env):
 
         self.vessel.Throttle = 0
         self.vessel.Rudder_Angle = 0
-        
-        vel = np.asarray(self.vessel.Velocity).flatten()  # ensures shape (3,)
-        vx = float(vel[0]) if len(vel) > 0 else 0.0
-        vy = float(vel[1]) if len(vel) > 1 else 0.0
-        r  = float(vel[2]) if len(vel) > 2 else 0.0
 
         observation = np.array([
             float(np.clip(self.DistanceToWaypoint / float(self.MaxDistance), -1, 1)),
@@ -214,8 +195,6 @@ class VesselEnv(gym.Env):
             float(np.cos(self.HeadingToWaypointError)),
             float(np.sin(self.DesiredHeadingError)),
             float(np.cos(self.DesiredHeadingError)),
-            r / float(self.MaxYawRate),
-            vy / float(self.MaxSpeed),
             self.vessel.Throttle,
             self.vessel.Rudder_Angle
         ], dtype=np.float32)

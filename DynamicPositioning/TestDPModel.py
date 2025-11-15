@@ -1,10 +1,11 @@
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3 import PPO
+from stable_baselines3 import TD3
 from .DynamicPositioningEnv import VesselEnv
 import os
 
-models_dir = "DynamicPositioning/dynamicPositioningModels/PPO-1763011259" 
+models_dir = "DynamicPositioning/dynamicPositioningModels/PPO-1763109595" 
 model_path = os.path.join(models_dir, "latest_interrupt")  # path to the saved .zip
 vecnorm_path = os.path.join(models_dir, "vecnormalize_latest.pkl")
 
